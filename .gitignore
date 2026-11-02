@@ -1,0 +1,5 @@
+shitcheat/
+target/
+**/target/
+*.pdb
+*.obj
