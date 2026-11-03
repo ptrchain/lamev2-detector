@@ -45,7 +45,9 @@ HWND hwnd = FindWindowA("  ", NULL);
 
 The cheat relies heavily on the idea that external input simulation (`SendInput`, `NtUserInjectKeyboardInput`) cannot be caught. This ignores how Windows handles input:
 
-- **Injected flags:** When user-mode APIs inject mouse or keyboard input, the Windows kernel sets the `LLMHF_INJECTED` and `LLKHF_INJECTED` flags. A standard low-level hook can see these flags immediately. Real hardware inputs never have these flags set.
+- **Injected flags:** When user-mode APIs inject mouse or keyboard input, the Windows kernel sets injected flags in low-level hooks:
+  - For keyboard: `LLKHF_INJECTED` (`0x10`, bit 4). (Note: bit 0 `0x01` is `LLKHF_EXTENDED`, which marks keys like the Windows key or arrows; injected input is specifically bit 4). Real keyboards never set bit 4 on normal tapping keys.
+  - For mouse: OpenTabletDriver (OTD) in absolute mode uses `SendInput`, which sets the Windows mouse injected flag (`LLMHF_INJECTED`). Because of this, checking general mouse injection will flag legitimate tablet users. The cheat's specific flaw is tagging its mouse movements with `0xDEADC0DE`, making it detectable without false-flagging OTD.
 - **Raw Input (`WM_INPUT`):** osu! supports Raw Input. Physical mice and tablets send raw HID reports with a valid hardware device handle (`hDevice`). Injected inputs do not produce valid raw HID reports. Comparing cursor movement against incoming raw input packets instantly exposes that the cursor is moving without hardware input.
 
 ---

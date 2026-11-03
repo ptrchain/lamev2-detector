@@ -14,17 +14,19 @@ Here are the practical ways to detect it.
 
 ## 1. Input Detections (Fastest and Most Reliable)
 
-### 1.1 Check for `0xDEADC0DE` in Mouse Events
+### 1.1 Check for `0xDEADC0DE` in Mouse Events (False-Positive Free)
 - **File:** `shitcheat/impl/memory/input.hxx` (lines 140, 160)
-- **What happens:** Every time the cheat moves the mouse, it sets `dwExtraInfo = 0xDEADC0DE`.
-- **How to detect:** In a mouse hook (`WH_MOUSE_LL`) or window message handler, inspect the `dwExtraInfo` field of incoming mouse messages. If it equals `0xDEADC0DE`, it is this cheat.
+- **What happens:** Every time the cheat moves the mouse, it explicitly sets `dwExtraInfo = 0xDEADC0DE`.
+- **Why generic mouse injection flags fail:** Tools like OpenTabletDriver (OTD) in absolute mode also send `SendInput` for tablet movement, which sets the Windows `LLMHF_INJECTED` flag. Checking solely for injected mouse moves will false-flag legitimate OTD users. Checking for `dwExtraInfo == 0xDEADC0DE` specifically targets `lamev2` without flagging OTD.
+- **How to detect:** In a mouse hook (`WH_MOUSE_LL`), check `ms.dwExtraInfo == 0xDEADC0DE`.
 
-### 1.2 Check the Injected Flag
-- **File:** `shitcheat/impl/input/keyboard_hook.hxx` and `shitcheat/core/relax/nt_input.hxx`
-- **What happens:** When the cheat injects mouse or keyboard events through Windows APIs, Windows sets the injected bit:
-  - Mouse: `MSLLHOOKSTRUCT.flags & LLMHF_INJECTED` (0x01)
-  - Keyboard: `KBDLLHOOKSTRUCT.flags & LLKHF_INJECTED` (0x01)
-- **How to detect:** Set a low-level hook (`WH_MOUSE_LL` or `WH_KEYBOARD_LL`). If inputs during gameplay have the injected bit set, flag them.
+### 1.2 Check the Keyboard Injected Flag (`LLKHF_INJECTED`)
+- **File:** `shitcheat/core/relax/nt_input.hxx`
+- **What happens:** When the cheat injects tapping keys (Relax / Tap Assist), Windows marks the keystrokes as synthetic.
+- **Important bit flag distinction:**
+  - `LLKHF_EXTENDED` (`0x01`, bit 0): Marks extended keys like Windows Key, arrow keys, and NumPad Enter. Checking `flags & 1` will incorrectly flag these keys.
+  - `LLKHF_INJECTED` (`0x10`, bit 4): Marks synthetic keypresses injected via `SendInput` or `NtUserInjectKeyboardInput`.
+- **How to detect:** In a low-level keyboard hook (`WH_KEYBOARD_LL`), check `(kb.flags & 0x10) != 0`. Real keyboards never set this bit on tapping keys.
 
 ### 1.3 Compare Raw Input (`WM_INPUT`) with Cursor Movement
 - **What happens:** Real mice and tablets send raw hardware packets through Windows Raw Input (`WM_INPUT`). Injected mouse moves (`SendInput`) do not send valid hardware packets.
@@ -104,8 +106,8 @@ Here are the practical ways to detect it.
 
 | Check | What it looks for | How easy to detect |
 | :--- | :--- | :--- |
-| **`0xDEADC0DE` check** | Mouse extra info set by cheat | Very easy (1 line of code) |
-| **Injected flag check** | Windows `LLMHF_INJECTED` / `LLKHF_INJECTED` flags | Very easy (hook) |
+| **`0xDEADC0DE` check** | Mouse extra info set by cheat (safe against OTD) | Very easy (1 line of code) |
+| **Injected key check** | Windows `LLKHF_INJECTED` (`0x10`) on tap keys | Very easy (hook) |
 | **Overlay window check** | Window class `"  "` with size 820x620 | Very easy (`FindWindowA`) |
 | **Raw Input check** | Cursor moving without hardware `WM_INPUT` | Easy |
 | **Config folder check** | `%APPDATA%\lame\configs` on disk | Very easy |

@@ -4,21 +4,26 @@ use windows_sys::Win32::Foundation::*;
 use windows_sys::Win32::System::Console::AllocConsole;
 use windows_sys::Win32::UI::WindowsAndMessaging::*;
 
+const LLKHF_INJECTED: u32 = 0x00000010;
+
 unsafe extern "system" fn mouse_proc(c: i32, w: WPARAM, l: LPARAM) -> LRESULT {
     if c >= 0 {
         let m = &*(l as *const MSLLHOOKSTRUCT);
+        // Only flag 0xDEADC0DE to avoid false-flagging OpenTabletDriver (which uses SendInput)
         if m.dwExtraInfo == 0xDEADC0DE {
-            eprintln!("lamev2 magic ExtraInfo: 0xDEADC0DE!");
-        } else if (m.flags & 1) != 0 {
-            eprintln!("Injected mouse movement!");
+            eprintln!("[DETECTION] lamev2 magic ExtraInfo: 0xDEADC0DE!");
         }
     }
     CallNextHookEx(std::ptr::null_mut(), c, w, l)
 }
 
 unsafe extern "system" fn kbd_proc(c: i32, w: WPARAM, l: LPARAM) -> LRESULT {
-    if c >= 0 && (*(l as *const KBDLLHOOKSTRUCT)).flags & 1 != 0 {
-        eprintln!("Injected key event (Relax/Tap Assist)!");
+    if c >= 0 {
+        let kb = &*(l as *const KBDLLHOOKSTRUCT);
+        // Bit 4 (0x10) is LLKHF_INJECTED. Bit 0 (0x01) is LLKHF_EXTENDED (e.g. WinKey, arrows).
+        if (kb.flags & LLKHF_INJECTED) != 0 {
+            eprintln!("[DETECTION] Injected key event (Relax/Tap Assist): VK=0x{:02X}!", kb.vkCode);
+        }
     }
     CallNextHookEx(std::ptr::null_mut(), c, w, l)
 }
@@ -31,7 +36,7 @@ fn watch() {
 
         thread::spawn(|| loop {
             if !FindWindowA(b"  \0".as_ptr(), std::ptr::null()).is_null() {
-                eprintln!("Found lame overlay window (class '  ')!");
+                eprintln!("[DETECTION] Found lame overlay window (class '  ')!");
             }
             thread::sleep(Duration::from_secs(1));
         });

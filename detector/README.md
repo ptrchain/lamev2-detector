@@ -7,12 +7,12 @@ A small Rust DLL you can inject into osu! (Stable or Lazer) to detect the `lamev
 ## What It Checks
 
 1. **`0xDEADC0DE` Mouse Check:**
-   - The cheat sets `in.mi.dwExtraInfo = 0xDEADC0DE` on every mouse move it makes.
-   - The DLL catches this using a mouse hook.
+   - The cheat sets `in.mi.dwExtraInfo = 0xDEADC0DE` on every simulated mouse movement.
+   - Using this specific magic number avoids false-flagging OpenTabletDriver (OTD), which uses `SendInput` in absolute mode.
 
-2. **Injected Input Check:**
-   - Windows flags simulated mouse moves and key presses with `LLMHF_INJECTED` and `LLKHF_INJECTED`.
-   - The DLL logs an alert if any gameplay input has these flags set.
+2. **Injected Keyboard Check (`LLKHF_INJECTED`):**
+   - Windows flags simulated keystrokes with bit 4 (`0x10`, `LLKHF_INJECTED`).
+   - The DLL checks `kb.flags & 0x10` to catch Relax and Tap Assist keypresses without false-flagging extended keys like the Windows key (which is bit 0, `LLKHF_EXTENDED`).
 
 3. **Overlay Window Check:**
    - The cheat's overlay window has a class name of `"  "` (two spaces).

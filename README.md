@@ -16,8 +16,8 @@ Analysis, detection vectors, and an in-game detector for the `lamev2` osu! cheat
 
 | Check | What It Looks For | Code |
 | :--- | :--- | :--- |
-| **`0xDEADC0DE` Check** | Magic number the cheat sets on mouse moves | Mouse hook checking `ms.dwExtraInfo == 0xDEADC0DE` |
-| **Injected Input Check** | Simulated mouse and keyboard inputs | Hook checking `(ms.flags & 1) != 0` and `(kb.flags & 1) != 0` |
+| **`0xDEADC0DE` Check** | Magic number set by cheat (avoids OTD false flags) | Mouse hook checking `ms.dwExtraInfo == 0xDEADC0DE` |
+| **Injected Key Check** | Simulated tapping keys from Relax | Keyboard hook checking `(kb.flags & 0x10) != 0` |
 | **Overlay Window Check** | Cheat's ImGui overlay window | `FindWindowA(b"  \0", null)` |
 | **Config Check** | Cheat settings folder | Checking if `%APPDATA%\lame\configs` exists |
 
